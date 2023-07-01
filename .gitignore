@@ -1,0 +1,9 @@
+.vscode
+.pytest_cache
+
+
+__pycache__
+
+build
+dist
+qianxun_wechat_sdk.egg-info
