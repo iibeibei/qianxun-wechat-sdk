@@ -1,8 +1,8 @@
 .vscode
 .pytest_cache
 
-
 __pycache__
+act_secret_file
 
 build
 dist

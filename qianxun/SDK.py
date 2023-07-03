@@ -1,8 +1,9 @@
 import os
 import sys
 import time
+import json
+import logging
 import requests
-import information
 import xml.etree.ElementTree as ET
 from multiprocessing import Process, Queue
 from flask import Flask, jsonify, request
@@ -169,19 +170,19 @@ class Robot:
         return self.post_(bot_wxid=bot_wxid, data=data)
 
     # 查询对象信息(Q0004)
-    def queryObjectInformation(self, query_wxid: str, bot_wxid: str = '') -> dict:
+    def queryObjectInformation(self, wxid: str, bot_wxid: str = '') -> dict:
         """查询对象信息(Q0004)
 
         Args:
             bot_wxid (str, optional):  机器人 WXID, 不填则默认为初始化时的 WXID \r\n
-            query_wxid (str): 查询对象的
+            wxid (str): 查询对象的 WXID
 
         Returns:
             dict: {
                 "code": 200,
                 "msg": "操作成功",
                 "result": { \r\n
-                    "wxid": "wxid_3sx9sjgq99kd22", # 查询对象的wxid \r\n
+                    "wxid": "wxid_3sx9sjgq99kd22", # 查询对象的 WXID \r\n
                     "wxNum": "DaenMin", # 查询对象的微信号 \r\n
                     "nick": "叽里咕噜测试[emoji=D83D][emoji=DE01]", # 查询对象的昵称 \r\n
                     "remark": "小号", # 查询对象的备注 \r\n
@@ -207,7 +208,7 @@ class Robot:
                 "timestamp": "1657443960827"
             }
         """
-        data = {"type": "Q0004", "data": {"wxid": query_wxid}}
+        data = {"type": "Q0004", "data": {"wxid": wxid}}
         return self.post_(bot_wxid=bot_wxid, data=data)
 
     # 获取好友列表(Q0005)
@@ -216,7 +217,7 @@ class Robot:
 
         Args:
             bot_wxid (str, optional):  机器人 WXID, 不填则默认为初始化时的 WXID \r\n
-            type (int): 1 = 从缓存中获取, 2 = 重新遍历二叉树并刷新缓存
+            type (str, optional): 1 = 从缓存中获取, 2 = 重新遍历二叉树并刷新缓存
 
         Returns:
             dict: {
@@ -259,7 +260,7 @@ class Robot:
 
         Args:
             bot_wxid (str, optional):  机器人 WXID, 不填则默认为初始化时的 WXID \r\n
-            type (int): 1 = 从缓存中获取, 2 = 重新遍历二叉树并刷新缓存
+            type (str, optional): 1 = 从缓存中获取, 2 = 重新遍历二叉树并刷新缓存
 
         Returns:
             dict: {
@@ -299,7 +300,7 @@ class Robot:
 
     # 获取公众号列表(Q0007)
     def getSubscriptionList(self, type: str = '1', bot_wxid: str = '') -> dict:
-        """_summary_
+        """获取公众号列表(Q0007)
 
         Args:
             bot_wxid (str, optional):  机器人 WXID, 不填则默认为初始化时的 WXID \r\n
@@ -341,12 +342,12 @@ class Robot:
         return self.post_(bot_wxid=bot_wxid, data=data)
 
     # 获取群成员列表(Q0008)
-    def getGroupMemberList(self, group_wxid: str, bot_wxid: str = '') -> dict:
+    def getGroupMemberList(self, wxid: str, bot_wxid: str = '') -> dict:
         """获取群成员列表(Q0008)
 
         Args:
             bot_wxid (str, optional): 机器人 WXID, 不填则默认为初始化时的 WXID \r\n
-            group_wxid (str): 群聊 WXID
+            wxid (str, optional): 群聊 WXID
 
         Returns:
             dict: {
@@ -364,7 +365,7 @@ class Robot:
             }
         """
 
-        data = {"type": "Q0008", "data": {"wxid": group_wxid}}
+        data = {"type": "Q0008", "data": {"wxid": wxid}}
         return self.post_(bot_wxid=bot_wxid, data=data)
 
     # 发送聊天记录(Q0009)
@@ -512,7 +513,6 @@ class Robot:
         """
 
         data = {"type": "Q0013", "data": {"wxid": wxid, "title": title, "content": content, "jumpPath": jump_url, "gh": gh, "path": path}}
-        response = requests.post(url=f'{self.url}?wxid={bot_wxid}', json=data)
         return self.post_(bot_wxid=bot_wxid, data=data)
 
     # 发送音乐分享(Q0014)
@@ -574,13 +574,13 @@ class Robot:
         return self.post_(bot_wxid=bot_wxid, data=data)
 
     # 确认收款(Q0016)
-    def confirmMoney(self, wxid: str, transferid: str, bot_wxid: str = '') -> dict:
+    def confirmMoney(self, wxid: str, transfer_id: str, bot_wxid: str = '') -> dict:
         """确认收款(Q0016)
 
         Args:
             bot_wxid (str, optional): 机器人 WXID, 不填则默认为初始化时的 WXID \r\n
             wxid (str): 对方 WXID \r\n
-            transferid (str): 转账 ID \r\n
+            transfer_id (str): 转账 ID \r\n
 
         Returns:
             dict: {
@@ -595,7 +595,7 @@ class Robot:
             }
         """
 
-        data = {"type": "Q0016", "data": {"wxid": wxid, "transferid": transferid}}
+        data = {"type": "Q0016", "data": {"wxid": wxid, "transferid": transfer_id}}
         return self.post_(bot_wxid=bot_wxid, data=data)
 
     # 同意好友请求(Q0017)
@@ -739,12 +739,12 @@ class Robot:
         return self.post_(bot_wxid=bot_wxid, data=data)
 
     # 删除好友(Q0022)
-    def deleteFriend(self, friend_wxid: str, bot_wxid: str = '') -> dict:
+    def deleteFriend(self, wxid: str, bot_wxid: str = '') -> dict:
         """删除好友(Q0022)
 
         Args:
             bot_wxid (str, optional): 机器人 WXID, 不填则默认为初始化时的 WXID \r\n
-            friend_wxid (str): 好友 WXID \r\n
+            wxid (str): 好友 WXID \r\n
 
         Returns:
             dict: {
@@ -759,17 +759,17 @@ class Robot:
             }
         """
 
-        data = {"type": "Q0022", "data": {"wxid": friend_wxid}}
+        data = {"type": "Q0022", "data": {"wxid": wxid}}
         response = requests.post(url=f'{self.url}?wxid={bot_wxid}', json=data)
         return self.post_(bot_wxid=bot_wxid, data=data)
 
     # 修改对象备注(Q0023)
-    def setFriendRemark(self, friend_wxid: str, remark: str, bot_wxid: str = '') -> dict:
+    def setFriendRemark(self, wxid: str, remark: str, bot_wxid: str = '') -> dict:
         """修改对象备注(Q0023)
 
         Args:
             bot_wxid (str, optional):  机器人 WXID, 不填则默认为初始化时的 WXID \r\n
-            friend_wxid (str): 对象 WXID 支持好友 WXID、群 WXID \r\n
+            wxid (str): 对象 WXID 支持好友 WXID、群 WXID \r\n
             remark (str): 备注 支持 Emoji、微信表情
 
         Returns:
@@ -785,16 +785,16 @@ class Robot:
             }
         """
 
-        data = {"type": "Q0023", "data": {"wxid": friend_wxid, "remark": remark}}
+        data = {"type": "Q0023", "data": {"wxid": wxid, "remark": remark}}
         return self.post_(bot_wxid=bot_wxid, data=data)
 
     # 修改群聊名称(Q0024)
-    def setGroupName(self, group_wxid: str, nick: str, bot_wxid: str = '') -> dict:
+    def setGroupName(self, wxid: str, nick: str, bot_wxid: str = '') -> dict:
         """修改群聊名称(Q0024)
 
         Args:
             bot_wxid (str, optional):  机器人 WXID, 不填则默认为初始化时的 WXID \r\n
-            group_wxid (str): 群 WXID \r\n
+            wxid (str): 群 WXID \r\n
             nick (str):  群名称 支持 Emoji、微信表情
 
         Returns:
@@ -810,17 +810,17 @@ class Robot:
             }
         """
 
-        data = {"type": "Q0024", "data": {"wxid": group_wxid, "nick": nick}}
+        data = {"type": "Q0024", "data": {"wxid": wxid, "nick": nick}}
         return self.post_(bot_wxid=bot_wxid, data=data)
 
     # 发送名片(Q0025)
-    def sendCard(self, friend_wxid: str, xml: str, bot_wxid: str = '') -> dict:
+    def sendCard(self, wxid: str, card_wxid: str, bot_wxid: str = '') -> dict:
         """发送名片(Q0025)
 
         Args:
             bot_wxid (str, optional):  机器人 WXID, 不填则默认为初始化时的 WXID \r\n
-            friend_wxid (str):  好友wxid \r\n
-            xml (str):  名片xml 不懂的话，就自己发一个，然后看日志
+            wxid (str):  好友 WXID \r\n
+            card_wxid (str):  需要发送的好友名片 WXID
 
         Returns:
             dict: {
@@ -835,83 +835,93 @@ class Robot:
             }
         """
 
-        data = {"type": "Q0025", "data": {"wxid": friend_wxid, "xml": xml}}
+        object_info = self.queryObjectInformation(query_wxid=card_wxid)
+
+        root = ET.Element("msg")
+        root.attrib["username"] = object_info['result']['wxid']
+        root.attrib["nickname"] = object_info['result']['nick']
+        root.attrib["alias"] = object_info['result']['wxNum']
+        root.attrib["province"] = object_info['result']['province']
+        root.attrib["city"] = object_info['result']['city']
+        root.attrib["sex"] = object_info['result']['sex']
+        card_xml = '<?xml version="1.0"?>' + ET.tostring(root).decode()
+
+        data = {"type": "Q0025", "data": {"wxid": wxid, "xml": card_xml}}
         return self.post_(bot_wxid=bot_wxid, data=data)
 
-    # 创建名片xml
-    def createCardXml(self, nickname: str, wxid: str, headimg: str) -> str:
-        root = ET.Element("msg")
-        root.attrib["bigheadimgurl"] = "http://wx.qlogo.cn/mmhead/0"
-        root.attrib["smallheadimgurl"] = "http://wx.qlogo.cn/mmhead/132"
-        root.attrib["username"] = "wxid_jah3fozezery22"
-        root.attrib["nickname"] = "〆无所不能。"
-        root.attrib["fullpy"] = "wusuobuneng"
-        root.attrib["shortpy"] = ""
-        root.attrib["alias"] = "PQAPQB"
-        root.attrib["imagestatus"] = "3"
-        root.attrib["scene"] = "17"
-        root.attrib["province"] = "云南"
-        root.attrib["city"] = "中国大陆"
-        root.attrib["sign"] = ""
-        root.attrib["sex"] = "2"
-        root.attrib["certflag"] = "0"
-        root.attrib["certinfo"] = ""
-        root.attrib["brandIconUrl"] = ""
-        root.attrib["brandHomeUrl"] = ""
-        root.attrib["brandSubscriptConfigUrl"] = ""
-        root.attrib["brandFlags"] = ""
-        root.attrib["regionCode"] = "CN_Yunnan_Kunming1"
-        root.attrib["biznamecardinfo"] = ""
-
-        tree = ET.ElementTree(root)
-        declaration = '<?xml version="1.0"?>'
-        xml_str = declaration + ET.tostring(root, encoding="utf-8").decode()
-        print(xml_str)
-
-        return xml_str
-
     # 回调事件
-    def callbackEvents(self, callback_fun, port: int = 5000, log: bool = False):
+    def callbackEvents(self, callback_fun, port: int = 5000, log_level: int = logging.INFO):
         """回调事件
 
         Args:
             callback_fun (_type_): 回调方法
-            port (int, optional): 回调端口. 默认 5000.
-            log (bool, optional): 是否打印日志. 默认 False.
+            port (int, optional): 回调端口. 默认 5000
+            log_level (int, optional): 是否打印日志. 默认 logging.INFO
         """
 
-        Process(target=self.callbackMessage, args=(port, callback_fun, log)).start()
+        Process(target=self.callbackMessage, args=(port, callback_fun, log_level)).start()
 
     # 回调消息
-    def callbackMessage(self, port, callback_fun, log):
+    def callbackMessage(self, port, callback_fun, log_level):
         """回调消息
 
         Args:
             port (_type_): 回调端口
             callback_fun (_type_): 回调方法
-            log (_type_): 是否打印日志
+            log_level (_type_): 日志等级
 
-        Returns:
-            _type_: _description_
         """
-        with open(os.devnull, 'w') as f:
-            if not log:
-                sys.stdout = f
-                sys.stderr = f
 
-            app = Flask(__name__)
+        if log_level:
+            log = logging.getLogger('werkzeug')
+            log.setLevel(log_level)
 
-            @app.route('/', methods=['GET', 'POST'])
-            def callback():
-                if request.method == 'GET':
-                    return jsonify({'code': 404, 'msg': '需要POST请求'})
-                elif request.method == 'POST':
-                    callback_fun(request.json)
-                    return jsonify({'code': 200, 'msg': '回调成功'})
+        app = Flask(__name__)
 
-            app.run(port=port)
+        @app.route('/', methods=['GET', 'POST'])
+        def callback():
+            if request.method == 'GET':
+                return jsonify({'code': 404, 'msg': '需要POST请求'})
+            elif request.method == 'POST':
+                callback_fun(request.json)
+                return jsonify({'code': 200, 'msg': '回调成功'})
 
+        app.run(host='0.0.0.0', port=port)
 
-if __name__ == '__main__':
-    xx = Robot(host='127.0.0.1', port=7668, bot_wxid='')
-    xx.callbackEvents(callback_fun=None, port=5000)
+    # 艾特群员
+    def at(wxid: str = '', nick: str = '', is_auto: bool = True, at_list: list = []) -> str:
+        """艾特群员, 仅发送群消息时有效
+
+        Args:
+            wxid (str, optional): 要艾特某人的wxid , 如果是艾特所有人就是 all \r\n
+            nick (str, optional): 显示的昵称, 这个可以随意填写, 不填写也会有效果, 没有限制 \r\n
+            is_auto (bool, optional):   ①当为 True 时,不管nick是否填写,都会自动填充对方真实的昵称, \r\n
+                                                ②当为 False 时,那么nick填什么,那么发出去就是什么,不填的话发出去只有一个@符号 \r\n
+            at_list (list, optional): 要艾特某人的wxid列表, 当填写此值时会自动忽略wxid,nick,is_auto的值 \r\n
+                                                可以是 [{wxid}] 也可以是 [{'wxid': 'wxid_1', 'nick': 'nick_1', 'is_auto': True}]
+        Returns:
+            str: 返回艾特的字符串
+        """
+
+        if at_list == []:
+            return f'[@,wxid={wxid},nick={nick},isAuto={str(is_auto).lower()}]'
+        else:
+            at_str = ''
+            for at in at_list:
+                if type(at) == dict:
+                    at_str += f'[@,wxid={at["wxid"]},nick={at["nick"]},isAuto={str(at["is_auto"]).lower()}]'
+                elif type(at) == str:
+                    at_str += f'[@,wxid={at},nick=' ',isAuto=true]'
+            return at_str
+
+    # 发送消息
+    def post_(self, bot_wxid: str = '', data: dict = {}) -> dict:
+        if not bot_wxid and not self.bot_wxid and data['type'] != 'X0000':
+            print('请传入机器人WXID')
+            return
+
+        try:
+            bot_wxid = bot_wxid if bot_wxid else self.bot_wxid
+            return requests.post(url=f'{self.url}?wxid={bot_wxid}', data=json.dumps(data)).json()
+        except Exception as e:
+            return {'code': 500, 'msg': '千寻接口请求失败'}
